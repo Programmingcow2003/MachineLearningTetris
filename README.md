@@ -1,2 +1,2 @@
 # MachineLearningTetris
-Running a machine learning model to play Tetris using gimnasium
+Running a machine learning model to play Tetris using gymnasium
