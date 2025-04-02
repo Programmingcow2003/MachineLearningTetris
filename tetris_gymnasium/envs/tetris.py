@@ -699,7 +699,7 @@ class Tetris(gym.Env):
         reward += self.rewards.gap * total_gaps
         reward += self.rewards.bumpiness * bumpiness
         reward += self.rewards.height * avg_height
-        reward += ( rows_cleared** 2 ) * clear_line
+        reward += ( rows_cleared** 2 ) * self.rewards.clear_line
         
         return reward
 
