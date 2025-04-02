@@ -16,6 +16,8 @@ from tetris_gymnasium.components.tetromino_randomizer import BagRandomizer, Rand
 from tetris_gymnasium.mappings.actions import ActionsMapping
 from tetris_gymnasium.mappings.rewards import RewardsMapping
 
+from scipy.ndimage import label, binary_dilation
+
 
 @dataclass
 class TetrisState:
@@ -195,11 +197,13 @@ class Tetris(gym.Env):
             max(vars(self.rewards).values()),
         )
 
+        self.total_lines_cleared = 0
+        self.total_steps = 0
+
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
         self.render_scaling_factor = render_upscale
         self.window_name = None
-        self.steps = 0
 
     def step(self, action: ActType) -> "tuple[dict, float, bool, bool, dict]":
         """Perform one step of the environment's dynamics.
@@ -263,15 +267,25 @@ class Tetris(gym.Env):
             else:
                 # If there's no more room to move, lock in the tetromino
                 reward, self.game_over, lines_cleared = self.commit_active_tetromino()
-        self.steps +=1
-        reward += self.steps * self.rewards.long_life_rate
+
+        self.total_lines_cleared += lines_cleared
+        self.total_steps +=1
+        infos = {"lines_cleared": lines_cleared}
+        if self.game_over:
+            infos = {'final_info':{'episode':{'r':self.total_lines_cleared,'l':self.total_steps}}}
+            self.total_steps = 0
+            self.total_lines_cleared = 0 
+            
+        reward += self.rewards.alife
+        
         return (
             self._get_obs(),
             reward,
             self.game_over,
             truncated,
-            {"lines_cleared": lines_cleared},
+            infos,
         )
+    
 
     def reset(
         self, *, seed: "int | None" = None, options: "dict[str, Any] | None" = None
@@ -469,19 +483,18 @@ class Tetris(gym.Env):
             self.game_over = True
         else:
             self.drop_active_tetromino()
-
-            total_gaps = self.detect_gaps(self.active_tetromino, self.x, self.y)
+            
 
             self.place_active_tetromino()
 
+
             self.board, lines_cleared = self.clear_filled_rows(self.board)
+
             reward = self.score(lines_cleared)
-            reward += self.rewards.gap * total_gaps
 
             # 2. Spawn the next tetromino and check if the game continues
             self.game_over = not self.spawn_tetromino()
-            reward += self.rewards.alife
-            
+
             if self.game_over:
                 reward = self.rewards.game_over
 
@@ -551,24 +564,45 @@ class Tetris(gym.Env):
             0,
         )
 
-    def detect_gaps(self, tetromino: Tetromino = None, x: int = None, y: int = None
-    ) -> int:
-        if tetromino is None:
-            tetromino = self.active_tetromino
-        if x is None:
-            x = self.x
-        if y is None:
-            y = self.y
+    def complex_scoring(self):
+        # Identify tetromino positions (values 2-8)
+        tetromino_mask = (self.board >= 2) & (self.board <= 9)
 
-        # Extract the part of the board directly below where the tetromino would occupy.
-        tetromino_height, tetromino_width = tetromino.matrix.shape
-        slices = tuple((slice(y + tetromino_height , y + tetromino_height+1), slice(x, x + tetromino_width)))
+        # Get the row index of the highest occupied cell in each column
+        # If a column is empty, assign height 0
+        heights = np.where(tetromino_mask.any(axis=0), self.board.shape[0] - np.argmax(tetromino_mask[::-1], axis=0), self.padding)
+        heights = heights[self.padding:-self.padding]
+        # Compute absolute differences between adjacent column heights
+        bumpiness = np.sum(np.abs(np.diff(heights)))
+        
+        heights = heights[self.padding:-self.padding]
+        aggregate_height = np.sum(heights)
 
-        board_subsection = self.board[slices]
 
-            # count number of empty spaces
-        return np.sum(board_subsection==0)
 
+        # Identify empty spaces (gaps)
+        gaps = (self.board == 0)
+
+        # Label all connected gap regions
+        labeled_gaps, num_features = label(gaps)
+
+        # Create a boundary mask (padding areas and board edges)
+        boundary_mask = (self.board == 1)
+
+        # Check which gap regions are fully enclosed
+        enclosed_count = 0
+        for i in range(1, num_features + 1):
+            region = (labeled_gaps == i)
+
+            # Expand region slightly to check if it touches the boundary
+            expanded_region = binary_dilation(region)
+
+            # If the expanded region does not overlap the boundary, it's fully enclosed
+            if not np.any(expanded_region & boundary_mask):
+                enclosed_count += np.sum(region)  # Count total zero pixels in enclosed regions
+
+
+        return bumpiness, aggregate_height, enclosed_count
 
 
     def project_tetromino(
@@ -658,7 +692,16 @@ class Tetris(gym.Env):
         Returns
             The score for the given number of lines cleared.
         """
-        return (rows_cleared**2) * self.width
+        reward = 0
+
+        bumpiness, avg_height, total_gaps = self.complex_scoring()
+
+        reward += self.rewards.gap * total_gaps
+        reward += self.rewards.bumpiness * bumpiness
+        reward += self.rewards.height * avg_height
+        reward += ( rows_cleared** 2 ) * clear_line
+        
+        return reward
 
     def create_board(self) -> np.ndarray:
         """Create a new board with the given dimensions."""
