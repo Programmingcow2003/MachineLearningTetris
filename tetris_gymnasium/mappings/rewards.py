@@ -10,10 +10,12 @@ class RewardsMapping:
     """
 
     alife: float = 1
-    clear_line: float = 2
     game_over: float = 0
     invalid_action: float = -0.1
-    gap = -0.2
-    long_life_rate: float = .0005
+
+    clear_line: float = 1
+    gap: float = -0.35
+    bumpiness: float = -0.18
+    height: float = -0.5
     
     
