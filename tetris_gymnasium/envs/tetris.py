@@ -196,7 +196,6 @@ class Tetris(gym.Env):
             min(vars(self.rewards).values()),
             max(vars(self.rewards).values()),
         )
-
         self.total_lines_cleared = 0
         self.total_steps = 0
 
@@ -264,6 +263,7 @@ class Tetris(gym.Env):
         if self.gravity_enabled and action != self.actions.hard_drop:
             if not self.collision(self.active_tetromino, self.x, self.y + 1):
                 self.y += 1
+                reward = 0
             else:
                 # If there's no more room to move, lock in the tetromino
                 reward, self.game_over, lines_cleared = self.commit_active_tetromino()
@@ -276,7 +276,8 @@ class Tetris(gym.Env):
             self.total_steps = 0
             self.total_lines_cleared = 0 
             
-        reward += self.rewards.alife
+        reward += self.rewards.long_life_bonus_rate * self.total_steps
+        self.previous_reward = reward
         
         return (
             self._get_obs(),
@@ -489,7 +490,6 @@ class Tetris(gym.Env):
 
 
             self.board, lines_cleared = self.clear_filled_rows(self.board)
-
             reward = self.score(lines_cleared)
 
             # 2. Spawn the next tetromino and check if the game continues
@@ -570,14 +570,14 @@ class Tetris(gym.Env):
 
         # Get the row index of the highest occupied cell in each column
         # If a column is empty, assign height 0
-        heights = np.where(tetromino_mask.any(axis=0), self.board.shape[0] - np.argmax(tetromino_mask[::-1], axis=0), self.padding)
+
+        heights = self.height - np.where(tetromino_mask.any(axis=0),np.argmax(np.flip(tetromino_mask[::-1],axis=0), axis=0), 20)
+
         heights = heights[self.padding:-self.padding]
         # Compute absolute differences between adjacent column heights
         bumpiness = np.sum(np.abs(np.diff(heights)))
         
-        heights = heights[self.padding:-self.padding]
-        aggregate_height = np.sum(heights)
-
+        aggregate_height = np.sum(heights) 
 
 
         # Identify empty spaces (gaps)
@@ -695,7 +695,7 @@ class Tetris(gym.Env):
         reward = 0
 
         bumpiness, avg_height, total_gaps = self.complex_scoring()
-
+        print(f'bump {bumpiness}, height:{avg_height}, gaps {total_gaps}')
         reward += self.rewards.gap * total_gaps
         reward += self.rewards.bumpiness * bumpiness
         reward += self.rewards.height * avg_height
