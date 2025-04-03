@@ -8,14 +8,14 @@ class RewardsMapping:
 
     The mapping can be extended to include additional rewards.
     """
-
-    alife: float = 1
-    game_over: float = 0
+    max_reward: float = 25
+    long_life_bonus_rate: float = .00001
+    game_over: float = -100
     invalid_action: float = -0.1
 
     clear_line: float = 1
-    gap: float = -0.35
-    bumpiness: float = -0.18
-    height: float = -0.5
+    gap: float = -0.5
+    bumpiness: float = -0.3
+    height: float = -0.7
     
     
