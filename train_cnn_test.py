@@ -322,13 +322,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                         f"global_step={global_step}, lines_cleared={infos['final_info']['episode']['r']}, length={infos['final_info']['episode']['l']}"
                     )
 
-#"""                    writer.add_scalar(
- #                       "charts/episodic_final_gaps", info["episode"]["g"], global_step
-  #                  )
-   #                 writer.add_scalar(
-    #                    "charts/episodic_bumpiness", info["episode"]["b"], global_step
-     #               )"""
-#
+                    writer.add_scalar(
+                        "charts/episodic_final_gaps", info["episode"]["g"], global_step
+                    )
                     writer.add_scalar(
                         "charts/episodic_lines_cleared", infos['final_info']['episode']['r'], global_step
                     )
