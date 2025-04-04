@@ -337,6 +337,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar(
                         "charts/total_tetrominoes_placed", infos['final_info']["episode"]["p"], global_step
                     )
+                    writer.add_scalar(
+                        "charts/cumulative_reward", infos['final_info']["episode"]["c"], global_step
+                    )
 
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
