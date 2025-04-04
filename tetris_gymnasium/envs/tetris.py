@@ -1,5 +1,4 @@
 """ Sean Phelan added a complex scoring function as established in the harvard paper. """
-
 """Tetris environment for Gymnasium."""
 import copy
 from dataclasses import dataclass, fields
@@ -201,6 +200,7 @@ class Tetris(gym.Env):
         self.total_lines_cleared = 0
         self.total_steps = 0
         self.final_bumpiness = 0
+        self.final_gaps = 0
         self.pieces_placed = 0
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -259,7 +259,7 @@ class Tetris(gym.Env):
                 else:
                     self.reset_tetromino_position()
         elif action == self.actions.hard_drop:
-            reward,self.final_bumpiness, self.game_over, lines_cleared = self.commit_active_tetromino()
+            reward,self.final_bumpiness, self.final_gaps, self.game_over, lines_cleared = self.commit_active_tetromino()
         elif action == self.actions.no_op:
             pass
 
@@ -269,17 +269,19 @@ class Tetris(gym.Env):
                 self.y += 1
             else:
                 # If there's no more room to move, lock in the tetromino
-                reward, self.final_bumpiness, self.game_over, lines_cleared = self.commit_active_tetromino()
+                reward, self.final_bumpiness, self.final_gaps, self.game_over, lines_cleared = self.commit_active_tetromino()
 
         self.total_lines_cleared += lines_cleared
         self.total_steps +=1
         infos = {"lines_cleared": lines_cleared}
         if self.game_over:
             infos = {'final_info':{'episode':{'r':self.total_lines_cleared,'l':self.total_steps,
-                                              'b':self.final_bumpiness,'p':self.pieces_placed}}}
+                                              'b':self.final_bumpiness,'p':self.pieces_placed,
+                                              'g':self.final_gaps}}}
             self.total_steps = 0
             self.total_lines_cleared = 0 
             self.pieces_placed = 0
+            self.final_gaps = 0
             
         reward += self.rewards.long_life_bonus_rate * self.total_steps
         self.previous_reward = reward
@@ -485,6 +487,7 @@ class Tetris(gym.Env):
         # 1. Drop the tetromino and lock it in place
         lines_cleared = 0
         bumpiness = 0
+        gaps = 0
         if self.collision(self.active_tetromino, self.x, self.y):
             reward = self.rewards.game_over
             self.game_over = True
@@ -497,7 +500,7 @@ class Tetris(gym.Env):
 
 
             self.board, lines_cleared = self.clear_filled_rows(self.board)
-            reward, bumpiness = self.score(lines_cleared)
+            reward, bumpiness,gaps = self.score(lines_cleared)
 
             # 2. Spawn the next tetromino and check if the game continues
             self.game_over = not self.spawn_tetromino()
@@ -508,7 +511,7 @@ class Tetris(gym.Env):
             # 3. Reset the swap flag (agent can swap once per tetromino)
             self.has_swapped = False
 
-        return reward,bumpiness , self.game_over, lines_cleared
+        return reward,bumpiness ,gaps, self.game_over, lines_cleared
 
     def clear_filled_rows(self, board) -> "tuple(np.ndarray, int)":
         """Clear any filled rows on the board.
@@ -707,7 +710,7 @@ class Tetris(gym.Env):
         reward += self.rewards.height * avg_height
         reward += ( rows_cleared** 2 ) * self.rewards.clear_line
         
-        return reward, bumpiness
+        return reward, bumpiness, total_gaps
 
     def create_board(self) -> np.ndarray:
         """Create a new board with the given dimensions."""
