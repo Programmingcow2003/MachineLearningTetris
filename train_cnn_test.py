@@ -86,6 +86,7 @@ def evaluate(
 # Training
 @dataclass
 class Args:
+    api_key = '36f2b9351dd98635d2c7dd64252e4431e1d7db3b'
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
     seed: int = 1
@@ -113,7 +114,7 @@ class Args:
     # env_id: str = "BreakoutNoFrameskip-v4"
     env_id: str = "tetris_gymnasium/Tetris"
     """the id of the environment"""
-    total_timesteps: int = 20_000_000  #### 20_000_000 is the default, lower for training
+    total_timesteps: int = 3_000_000  #### 20_000_000 is the default, lower for training
     """total timesteps of the experiments"""
     learning_rate: float = 1e-4
     """the learning rate of the optimizer"""
@@ -135,7 +136,7 @@ class Args:
     """the ending epsilon for exploration"""
     exploration_fraction: float = 0.10
     """the fraction of `total-timesteps` it takes from start-e to go end-e"""
-    learning_starts: int = 80000
+    learning_starts: int = 40000
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
@@ -231,7 +232,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     run_name = f"{args.exp_name}/{random.choice(greek_letters)}_{random.choice(greek_letters)}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-        wandb.login(key='36f2b9351dd98635d2c7dd64252e4431e1d7db3b')
+        wandb.login(key=args.api_key)
 
         run = wandb.init(
             project=args.wandb_project_name,
@@ -318,14 +319,29 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             for info in infos["final_info"]:
                 if info and "episode" in info:
                     print(
-                        f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_len={info['episode']['l']}"
+                        f"global_step={global_step}, lines_cleared={infos['final_info']['episode']['r']}, length={infos['final_info']['episode']['l']}"
+                    )
+
+#"""                    writer.add_scalar(
+ #                       "charts/episodic_final_gaps", info["episode"]["g"], global_step
+  #                  )
+   #                 writer.add_scalar(
+    #                    "charts/episodic_bumpiness", info["episode"]["b"], global_step
+     #               )"""
+#
+                    writer.add_scalar(
+                        "charts/episodic_lines_cleared", infos['final_info']['episode']['r'], global_step
                     )
                     writer.add_scalar(
-                        "charts/episodic_return", info["episode"]["r"], global_step
+                        "charts/episodic_length", infos['final_info']["episode"]["l"], global_step
                     )
                     writer.add_scalar(
-                        "charts/episodic_length", info["episode"]["l"], global_step
+                        "charts/final_bumpiness", infos['final_info']["episode"]["b"], global_step
                     )
+                    writer.add_scalar(
+                        "charts/total_tetrominoes_placed", infos['final_info']["episode"]["p"], global_step
+                    )
+
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
