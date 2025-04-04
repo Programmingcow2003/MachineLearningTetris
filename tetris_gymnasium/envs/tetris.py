@@ -1,4 +1,3 @@
-""" Sean Phelan added a complex scoring function as established in the harvard paper. """
 """Tetris environment for Gymnasium."""
 import copy
 from dataclasses import dataclass, fields
@@ -202,6 +201,7 @@ class Tetris(gym.Env):
         self.final_bumpiness = 0
         self.final_gaps = 0
         self.pieces_placed = 0
+        self.cum_reward = 0
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -272,16 +272,18 @@ class Tetris(gym.Env):
                 reward, self.final_bumpiness, self.final_gaps, self.game_over, lines_cleared = self.commit_active_tetromino()
 
         self.total_lines_cleared += lines_cleared
+        self.cum_reward += reward
         self.total_steps +=1
         infos = {"lines_cleared": lines_cleared}
         if self.game_over:
             infos = {'final_info':{'episode':{'r':self.total_lines_cleared,'l':self.total_steps,
                                               'b':self.final_bumpiness,'p':self.pieces_placed,
-                                              'g':self.final_gaps}}}
+                                              'g':self.final_gaps,'c' : self.cum_reward}}}
             self.total_steps = 0
             self.total_lines_cleared = 0 
             self.pieces_placed = 0
             self.final_gaps = 0
+            self.cum_reward = 0
             
         reward += self.rewards.long_life_bonus_rate * self.total_steps
         self.previous_reward = reward
