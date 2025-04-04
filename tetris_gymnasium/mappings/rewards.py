@@ -9,7 +9,7 @@ class RewardsMapping:
     The mapping can be extended to include additional rewards.
     """
     max_reward: float = 25
-    long_life_bonus_rate: float = .00001
+    long_life_bonus_rate: float = 0.00001
     game_over: float = -100
     invalid_action: float = -0.1
 
