@@ -8,9 +8,9 @@ TODO: follow the principles of: https://codemyroad.wordpress.com/2013/04/14/tetr
 Apply more specific rewards for actions that are not tetromino placements
 
 Get the relay buffer filled by either :
-\t-running 2 seperate render mode envs at the same time with the same seed
-\t-use the pretrained model from last time we saved and ran validation on
-\t-somehow have the rule-based model accept rgb.
+\\t-running 2 seperate render mode envs at the same time with the same seed
+\\t-use the pretrained model from last time we saved and ran validation on
+\\t-somehow have the rule-based model accept rgb.
 
 Also make sure the model has higher exploration depth
 
