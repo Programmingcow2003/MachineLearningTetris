@@ -1,3 +1,5 @@
+## test code to display how each action is scored for the single acrion model based on our reward fuction and random moves.
+
 import gymnasium as gym
 
 from tetris_gymnasium.envs.tetris import Tetris
