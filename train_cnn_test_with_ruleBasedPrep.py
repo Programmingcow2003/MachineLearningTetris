@@ -1,5 +1,12 @@
 
 '''
+BETA CODE:
+goal of this is to replace our random moves with rule based moves zack developed. We need 
+to unify the render mode between Zack and I's code (ascii vs RGB array) in orger to have the actions sync.
+We want to render both environments in parallel, but run into trouble with desyncing and seeding issues.
+'''
+
+'''
 bash Script:
 conda create -n tetris python==3.10
 conda install pytorch torchvision tensorboard
@@ -9,6 +16,7 @@ python -m pip install tetris-gymnasium
 conda install conda-forge::tyro
 python -m pip install stable_baselines3
 conda install conda-forge::gymnasium
+python -m pip install gymnasium[other]
 
 cd ~_CLASSFOLDER_
 python train_cnn.py
@@ -74,7 +82,7 @@ def evaluate(
             q_values = model(torch.Tensor(obs).to(device))
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
         next_obs, _, _, _, infos = envs.step(actions)
-        if "final_info" in infos:
+        if "final_info" in infos and type(infos) == dict:
             for info in infos["final_info"]:
                 if "episode" not in info:
                     continue
@@ -82,6 +90,7 @@ def evaluate(
                     f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}"
                 )
                 episodic_returns += [info["episode"]["r"]]
+        print(infos)
         obs = next_obs
 
     return episodic_returns
@@ -144,6 +153,7 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 4
     """the frequency of training"""
+    rule_model_training: int = learning_starts
 
 
 
@@ -298,47 +308,43 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
 
-    for global_step in range(args.rule_model_training):
-        for env in envs:
+    model_path: str = '/Users/seanphelan/PycharmProjects/pythonProject/runs/train_cnn_test/chi_upsilon__1__1742402475/train_cnn_test.cleanrl_model'
+    make_env
+    env_id = args.env_id
+    eval_episodes=10
+    run_name=f"{run_name}-train"
+    Model=QNetwork
+    device=device
+    epsilon=0.05
+    capture_video = args.capture_video
+    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    model = Model(envs).to(device)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
 
-            boards = envs.render()  # Get board as image
+    obs, _ = envs.reset()
+    episodic_returns = []
+    while len(episodic_returns) < eval_episodes:
+        if random.random() < epsilon:
+            actions = np.array(
+                [envs.single_action_space.sample() for _ in range(envs.num_envs)]
+            )
+        else:
+            q_values = model(torch.Tensor(obs).to(device))
+            actions = torch.argmax(q_values, dim=1).cpu().numpy()
+        next_obs, _, _, _, infos = envs.step(actions)
+        if "final_info" in infos and type(infos) == dict:
+            for info in infos["final_info"]:
+                if "episode" not in info:
+                    continue
+                print(
+                    f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}"
+                )
+                episodic_returns += [info["episode"]["r"]]
+        print(infos)
+        obs = next_obs
 
-            boards = convert_strBoard_to_2dArray(boards)
-            column_heights = find_column_heights(boards)
-
-            piece_width = find_piece_width(boards)
-            if (piece_width == "No Piece Found"):
-                # Hard drop if the active piece doesn't have anywhere to go
-                action = 5
-            # Rotate the piece if it is wide
-            elif (piece_width > 2):
-                action = 3  # Rotate clockwise
-            else:
-                aim = find_aim(column_heights, piece_width)
-                left_index = find_leftmost_index(boards)
-                if (left_index > aim):
-                    # Move left
-                    action = 0
-                elif (left_index < aim):
-                    # Move right
-                    action = 1
-                else:
-                    # We have found the columns we want the piece to go
-                    # Hard drop
-                    action = 5
-
-            next_obs, rewards, terminations, truncations, infos = envs.step(action)
-            real_next_obs = next_obs.copy()
-
-            for idx, trunc in enumerate(truncations):
-                if trunc:
-                    real_next_obs[idx] = infos["final_observation"][idx]
-
-    
-            # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
-            obs = next_obs
-
-            # Handle both 4-value and 5-value return cases
+        # Handle both 4-value and 5-value return cases
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
 
@@ -367,7 +373,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        if "final_info" in infos:
+        if "final_info" in infos and type(infos) == dict:
             for info in infos["final_info"]:
                 if info and "episode" in info:
                     print(
