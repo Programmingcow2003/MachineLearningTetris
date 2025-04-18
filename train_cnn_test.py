@@ -1,5 +1,7 @@
 
 '''
+To get this code to run, you need to create the gollowing environment:
+
 bash Script:
 conda create -n tetris python==3.10
 conda install pytorch torchvision tensorboard
@@ -9,9 +11,13 @@ python -m pip install tetris-gymnasium
 conda install conda-forge::tyro
 python -m pip install stable_baselines3
 conda install conda-forge::gymnasium
+python -m pip install gymnasium[other]
 
+After creating the environment, you will have to update some files in the libraries, 
+all the files you need to change are in the folders of this GitHub branch.
+Once that is complete, just change your directory and run this code
 cd ~_CLASSFOLDER_
-python train_cnn.py
+python ungrouped_dqn_train.py
 '''
 
 
@@ -128,7 +134,7 @@ class Args:
     """the target network update rate"""
     target_network_frequency: int = 1000
     """the timesteps it takes to update the target network"""
-    batch_size: int = 32
+    batch_size: int = 128
     """the batch size of sample from the reply memory"""
     start_e: float = 1
     """the starting epsilon for exploration"""
