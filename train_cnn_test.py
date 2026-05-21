@@ -231,7 +231,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     run_name = f"{args.exp_name}/{random.choice(greek_letters)}_{random.choice(greek_letters)}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-        wandb.login(key='36f2b9351dd98635d2c7dd64252e4431e1d7db3b')
+        #Make sure to put a key here
+        wandb.login(key=ENV_VARIABLE)
 
         run = wandb.init(
             project=args.wandb_project_name,
